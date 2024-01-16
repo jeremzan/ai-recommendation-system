@@ -8,7 +8,6 @@ def test_len_input():
 
 def test_valid_input():
     user_input = ask_user()
-    user_input = "ssds sdsd sdsd , The gem of thrones    ,    "
     shows_list = user_input.split(",")
     for show in shows_list:
         assert not show.strip() == ""
