@@ -4,6 +4,9 @@ import pandas as pd
 from dotenv import load_dotenv
 import os
 import pickle
+import numpy as np
+import heapq
+
 
 
 load_dotenv()
@@ -16,8 +19,7 @@ def ask_user(user_input):
         return None
     return shows_list
 
-def get_favorite_tv_shows(shows_list):
-    known_shows = ["Game of Thrones", "Lupin", "The Witcher", "Breaking Bad", "Stranger Things"]
+def get_favorite_tv_shows(shows_list, known_shows):
 
     if shows_list:
         matched_shows = [process.extractOne(show, known_shows)[0] for show in shows_list]
@@ -48,10 +50,32 @@ def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
         print(counter)
         counter +=1
 
-        
-    
     with open('embeddings.pkl', 'wb') as file:  # Open file in binary write mode
         pickle.dump(embeddings_dict, file)
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+def find_matching_shows(favorite_shows, embeddings):
+    favorite_embeddings = []
+    for show in favorite_shows:
+        favorite_embeddings.append(embeddings[show])
+    
+    #Compute average of favorite shows
+    average = np.mean(favorite_embeddings, axis=0)
+
+    #Compute distance 
+
+    all_distances = {}
+    for key, element in embeddings.items():
+        if key in favorite_shows:
+            continue
+        distance = cosine_similarity(average, element)
+        all_distances[key] = distance
+
+    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
+    best_matches = [x[0] for x in smallest_elements]
+    print(best_matches)
 
 
 if __name__ == "__main__":
@@ -59,7 +83,9 @@ if __name__ == "__main__":
         user_input = input("Which TV shows did you love watching? Separate them by a comma. Make sure to enter more than 1 show: \n")
         # user_inputs.append(user_input)
         shows_list = ask_user(user_input)
-        favorite_shows = get_favorite_tv_shows(shows_list)
+        known_tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') #Monte ca en haut et passe le dans la fonction !
+
+        favorite_shows = get_favorite_tv_shows(shows_list, known_tv_shows['Title'])
         if favorite_shows:
             print(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
             confirmation = input()
@@ -71,11 +97,14 @@ if __name__ == "__main__":
         else:
                 print("Please enter at least 2 TV shows and don't leave any empty spaces between commas.\n")   
 
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY')) #Jeremy, oublie pas dde rentrer ton API key dans un .env :)
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     if not os.path.exists('./embeddings.pkl'):
-        print('enter')
-        tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') #Monte ca en haut et passe le dans la fonction !
-        generate_embeddings(tv_shows, client)
+        generate_embeddings(known_tv_shows, client)
+        
+    with open('./embeddings.pkl', 'rb') as embedding_file:
+        embeddings = pickle.load(embedding_file)
+
+    find_matching_shows(favorite_shows, embeddings)
 
 
 # Example usage
