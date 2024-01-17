@@ -1,4 +1,6 @@
 from fuzzywuzzy import process
+from openai import OpenAI
+import pandas as pd
 
 def ask_user():
 
@@ -40,5 +42,17 @@ def get_favorite_tv_shows():
             print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
     
 
+def extract_description(file_path):
+    try:
+        df = pd.read_csv(file_path)
+        descriptions = df['Description'].tolist()
+        return descriptions
+    except Exception as e:
+        print(f"Error reading CSV file: {e}")
+
+
+
+def generate_embeddings(file_path):
+    return
 # Example usage
 favorite_shows = get_favorite_tv_shows()
