@@ -77,7 +77,6 @@ if __name__ == "__main__":
         tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') #Monte ca en haut et passe le dans la fonction !
         generate_embeddings(tv_shows, client)
 
-   
 
 # Example usage
 # favorite_shows = get_favorite_tv_shows()
