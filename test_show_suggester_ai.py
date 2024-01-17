@@ -1,5 +1,3 @@
-# tests/test_show_suggester_ai.py
-
 import pytest
 from show_suggester_ai import ask_user, get_favorite_tv_shows
 
