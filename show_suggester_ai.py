@@ -1,6 +1,11 @@
 from fuzzywuzzy import process
 from openai import OpenAI
 import pandas as pd
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
 
 def ask_user():
 
@@ -52,7 +57,24 @@ def extract_description(file_path):
 
 
 
-def generate_embeddings(file_path):
-    return
+def generate_embeddings(file_path, client, model="text-embedding-ada-002"):
+    descriptions = extract_description(file_path)
+    with open('embeddings.txt', 'a') as file:  # Open file in append mode
+        for description in descriptions:
+            response = client.embeddings.create(
+                input=description,
+                model=model
+            )
+            embedding = response.data[0].embedding
+            file.write(str(embedding) + '\n')  # Convert embedding to string and write to file
+
+
+
+
+if __name__ == "__main__":
+   client = OpenAI(api_key=os.getenv('OPENAI_API_KEY')) #Jeremy, oublie pas dde rentrer ton API key dans un .env :)
+   generate_embeddings('./imdb_tvshows - imdb_tvshows.csv', client)
+   
+
 # Example usage
-favorite_shows = get_favorite_tv_shows()
+# favorite_shows = get_favorite_tv_shows()
