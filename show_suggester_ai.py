@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY')) #Jeremy, oublie pas dde rentrer ton API key dans un .env :)
     if not os.path.exists('./embeddings.txt'):
-        descriptions = extract_description('./imdb_tvshows - imdb_tvshows.csv') 
+        descriptions = extract_description('./imdb_tvshows - imdb_tvshows.csv') #Monte ca en haut et passe le dans la fonction !
         generate_embeddings(descriptions, client)
 
    
