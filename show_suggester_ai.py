@@ -73,7 +73,7 @@ def generate_embeddings(file_path, client, model="text-embedding-ada-002"):
 
 if __name__ == "__main__":
    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY')) #Jeremy, oublie pas dde rentrer ton API key dans un .env :)
-   generate_embeddings('./imdb_tvshows - imdb_tvshows.csv',client)
+   generate_embeddings('./imdb_tvshows - imdb_tvshows.csv', client)
    
 
 # Example usage
