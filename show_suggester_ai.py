@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 import os
 import pickle
 import numpy as np
-import heapq
 
 
 
@@ -20,7 +19,6 @@ def ask_user(user_input):
     return shows_list
 
 def get_favorite_tv_shows(shows_list, known_shows):
-
     if shows_list:
         matched_shows = [process.extractOne(show, known_shows)[0] for show in shows_list]
         return matched_shows
@@ -75,6 +73,7 @@ def find_matching_shows(favorite_shows, embeddings):
 
     smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
     best_matches = [x[0] for x in smallest_elements]
+    print(smallest_elements)
     print(best_matches)
 
 
@@ -83,8 +82,7 @@ if __name__ == "__main__":
         user_input = input("Which TV shows did you love watching? Separate them by a comma. Make sure to enter more than 1 show: \n")
         # user_inputs.append(user_input)
         shows_list = ask_user(user_input)
-        known_tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') #Monte ca en haut et passe le dans la fonction !
-
+        known_tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') 
         favorite_shows = get_favorite_tv_shows(shows_list, known_tv_shows['Title'])
         if favorite_shows:
             print(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
@@ -97,6 +95,7 @@ if __name__ == "__main__":
         else:
                 print("Please enter at least 2 TV shows and don't leave any empty spaces between commas.\n")   
 
+
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     if not os.path.exists('./embeddings.pkl'):
         generate_embeddings(known_tv_shows, client)
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     with open('./embeddings.pkl', 'rb') as embedding_file:
         embeddings = pickle.load(embedding_file)
 
-    find_matching_shows(favorite_shows, embeddings)
+    find_matching_shows(favorite_shows, embeddings) 
 
 
 # Example usage
