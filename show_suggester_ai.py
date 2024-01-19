@@ -8,17 +8,33 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 
-
 load_dotenv()
 
-
 def user_input_to_shows_list(user_input):
+    """
+    Convert user input string to a list of TV show names.
+
+    Args:
+        user_input (str): User input string with TV show names separated by commas.
+
+    Returns:
+        list: List of TV show names with leading and trailing whitespaces removed.
+    """
     shows_list = user_input.split(",")    
     shows_list_stripped = [show.strip() for show in shows_list]
     return shows_list_stripped
 
 def get_favorite_tv_shows(shows_list, known_shows):
+    """
+    Get the user's favorite TV shows based on matching with known shows.
 
+    Args:
+        shows_list (list): List of user-provided TV show names.
+        known_shows (list): List of known TV show names.
+
+    Returns:
+        list: List of favorite TV show names that match the known TV shows, or None if criteria are not met.
+    """
     if shows_list:
         # Check  if there is an empty string/whitespaces only
         if not all(shows_list):
@@ -35,6 +51,15 @@ def get_favorite_tv_shows(shows_list, known_shows):
     return None
 
 def read_csv_file(file_path):
+    """
+    Read data from a CSV file into a DataFrame.
+
+    Args:
+        file_path (str): Path to the CSV file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing data from the CSV file, or None if there is an error reading the file.
+    """
     try:
         tv_shows = pd.read_csv(file_path)
         return tv_shows
@@ -42,6 +67,17 @@ def read_csv_file(file_path):
         print(f"Error reading CSV file: {e}")
 
 def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
+    """
+    Generate text embeddings for TV show descriptions and save them to a file.
+
+    Args:
+        tv_shows (pd.DataFrame): DataFrame containing TV show data with 'Title' and 'Description' columns.
+        client (OpenAI): OpenAI API client.
+        model (str, optional): OpenAI text embedding model (default is "text-embedding-ada-002").
+
+    Returns:
+        None
+    """
     embeddings_dict = {}
     titles = tv_shows['Title'].tolist()
     descriptions = tv_shows['Description'].tolist()
@@ -60,9 +96,29 @@ def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
         pickle.dump(embeddings_dict, file)
 
 def cosine_similarity(a, b):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Args:
+        a (np.array): First vector.
+        b (np.array): Second vector.
+
+    Returns:
+        float: Cosine similarity between vectors a and b.
+    """
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 def find_matching_shows(favorite_shows, embeddings):
+    """
+    Find TV shows that match the user's favorite shows based on embeddings.
+
+    Args:
+        favorite_shows (list): List of user's favorite TV show names.
+        embeddings (dict): Dictionary mapping TV show names to embeddings.
+
+    Returns:
+        list: List of recommended TV show names.
+    """
     favorite_embeddings = []
     for show in favorite_shows:
         favorite_embeddings.append(embeddings[show])
@@ -85,9 +141,19 @@ def find_matching_shows(favorite_shows, embeddings):
     # print(recommended_shows)
     return recommended_shows
 
-
-
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
+    """
+    Generate TV show concepts and plots based on favorite and recommended shows.
+
+    Args:
+        favorite_shows (list): List of user's favorite TV show names.
+        recommended_shows (list): List of recommended TV show names.
+        client (OpenAI): OpenAI API client.
+        model (str, optional): OpenAI language model (default is "gpt-3.5-turbo").
+
+    Returns:
+        tuple: Two generated TV show descriptions as strings.
+    """
 
     # Convert lists to comma-separated strings
     favorite_shows_str = ', '.join(favorite_shows)
@@ -122,6 +188,15 @@ def generate_show_descriptions(favorite_shows, recommended_shows, client, model=
     return content1, content2
 
 def extract_show_name(description):
+    """
+    Extract the TV show name from a description.
+
+    Args:
+        description (str): TV show description.
+
+    Returns:
+        str: Extracted TV show name or "Unknown Show" if not found.
+    """
     # Extract the show name from the line starting with "Title: "
     for line in description.split('\n'):
         if line.startswith("Title: "):
@@ -129,6 +204,15 @@ def extract_show_name(description):
     return "Unknown Show"  # Fallback in case the title line is not found
 
 def extract_concept(description):
+    """
+    Extract the TV show concept from a description.
+
+    Args:
+        description (str): TV show description.
+
+    Returns:
+        str: Extracted TV show concept or "Concept not available" if not found.
+    """
     concept_start = description.find("Concept:")
     plot_start = description.find("Plot:", concept_start)
 
@@ -142,7 +226,16 @@ def extract_concept(description):
     return concept_text
 
 def generate_show_ads(description1, description2):
-    # Create prompts and call OpenAI DALL-E API
+    """
+    Generate advertisements for TV shows based on their descriptions using DALL-E API.
+
+    Args:
+        description1 (str): TV show description for the first show.
+        description2 (str): TV show description for the second show.
+
+    Returns:
+        None (displays generated images).
+    """
     prompt1 = f"Create an advertisement for a TV show based on the description: {description1}"
     prompt2 = f"Create an advertisement for a TV show based on the description: {description2}"
 
@@ -173,7 +266,6 @@ def generate_show_ads(description1, description2):
     # # If you want to open saved images using OS default viewer
     # os.system("open show1_ad.jpg")  # For MacOS
     # os.system("start show1_ad.jpg")  # For Windows
-
 
 
 if __name__ == "__main__":
@@ -217,7 +309,7 @@ if __name__ == "__main__":
     show2name = extract_show_name(content2)
     concept1 = extract_concept(content1)
     concept2 = extract_concept(content2)
-    # generate_show_ads(content1, content2)
+    generate_show_ads(content1, content2)
    
 
 
