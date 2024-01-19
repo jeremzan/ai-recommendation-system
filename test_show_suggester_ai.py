@@ -61,8 +61,3 @@ def test_generate_show_descriptions():
     except Exception as e:
         print(f"Error generating show descriptions: {e}")
     
-
-
-
-
-

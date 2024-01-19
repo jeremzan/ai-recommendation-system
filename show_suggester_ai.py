@@ -71,14 +71,7 @@ def find_matching_shows(favorite_shows, embeddings):
     average = np.mean(favorite_embeddings, axis=0)
 
     #Compute distance 
-    all_distances = compute_distances(favorite_shows, embeddings, average)
 
-    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
-    best_matches = [x[0] for x in smallest_elements]
-    print(smallest_elements)
-    print(best_matches)
-
-def compute_distances(favorite_shows, embeddings, average):
     all_distances = {}
     for key, element in embeddings.items():
         if key in favorite_shows:
@@ -86,10 +79,101 @@ def compute_distances(favorite_shows, embeddings, average):
         distance = cosine_similarity(average, element)
         all_distances[key] = distance
 
-    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
-    best_matches = [x[0] for x in smallest_elements]
-    print(smallest_elements)
-    print(best_matches)
+    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1], reverse=True)[:5]
+    recommended_shows = [x[0] for x in smallest_elements]
+    # print(smallest_elements)
+    # print(recommended_shows)
+    return recommended_shows
+
+
+
+def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
+
+    # Convert lists to comma-separated strings
+    favorite_shows_str = ', '.join(favorite_shows)
+    recommended_shows_str = ', '.join(recommended_shows)
+
+    # Create prompts and call OpenAI ChatGPT API
+    prompt1 = f"""Create a concept for a new TV show based on: {favorite_shows_str}. 
+    The format of you response should be:
+    Title : <title of the show>
+    Concept: <description of the show>
+    Plot: <description of the plot>"""
+    prompt2 = f"""Create a concept for a new TV show based on: {recommended_shows_str}. 
+    The format of you response should be:
+    Title : <title of the show>
+    Concept: <description of the show>
+    Plot: <description of the plot>"""
+
+    response1 = client.chat.completions.create(
+        model=model, 
+        messages=[
+            {   "role": "user",
+                "content": prompt1  }])
+    response2 = client.chat.completions.create(
+        model=model, 
+        messages=[
+            {   "role": "user",
+                "content": prompt2  }])
+    
+    content1 = response1.choices[0].message.content
+    content2 = response2.choices[0].message.content
+
+    return content1, content2
+
+def extract_show_name(description):
+    # Extract the show name from the line starting with "Title: "
+    for line in description.split('\n'):
+        if line.startswith("Title: "):
+            return line.replace("Title: ", "").strip()
+    return "Unknown Show"  # Fallback in case the title line is not found
+
+def extract_concept(description):
+    concept_start = description.find("Concept:")
+    plot_start = description.find("Plot:", concept_start)
+
+    if concept_start != -1 and plot_start != -1:
+        concept_text = description[concept_start + 7:plot_start].strip()  # +7 to skip "Concept:" part
+    elif concept_start != -1:
+        concept_text = description[concept_start + 7:].strip()  # +7 to skip "Concept:" part
+    else:
+        return "Concept not available"  # Fallback if "Concept:" is not found
+
+    return concept_text
+
+def generate_show_ads(description1, description2):
+    # Create prompts and call OpenAI DALL-E API
+    prompt1 = f"Create an advertisement for a TV show based on the description: {description1}"
+    prompt2 = f"Create an advertisement for a TV show based on the description: {description2}"
+
+    image_data1 = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt1,
+        size="1024x1024",
+        quality="standard",
+        n=1,)
+    image_data2 = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt2,
+        size="1024x1024",
+        quality="standard",
+        n=1,)
+
+    # Decode and save or display images
+    image1 = Image.open(BytesIO(image_data1))
+    image2 = Image.open(BytesIO(image_data2))
+
+    image1.show()  # This will open the image using the default viewer
+    image2.show()  
+
+    # # If you want to save the images
+    # image1.save("show1_ad.jpg")
+    # image2.save("show2_ad.jpg")
+
+    # # If you want to open saved images using OS default viewer
+    # os.system("open show1_ad.jpg")  # For MacOS
+    # os.system("start show1_ad.jpg")  # For Windows
+
 
 
 if __name__ == "__main__":
@@ -147,4 +231,3 @@ if __name__ == "__main__":
         f"Here are also the 2 tv show ads. Hope you like them!"
     )
     print(final_message)
-
