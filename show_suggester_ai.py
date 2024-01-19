@@ -108,6 +108,27 @@ def cosine_similarity(a, b):
     """
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
+def compute_distances(favorite_shows, embeddings, average):
+    """
+    Calculate cosine distances between the average embedding and other TV show embeddings.
+
+    Args:
+        favorite_shows (list): List of user's favorite TV show names.
+        embeddings (dict): Dictionary mapping TV show names to embeddings.
+        average (np.array): Average embedding of the user's favorite shows.
+
+    Returns:
+        dict: A dictionary containing TV show names as keys and cosine distances as values.
+    """
+    all_distances = {}
+    for key, element in embeddings.items():
+        if key in favorite_shows:
+            continue
+        distance = cosine_similarity(average, element)
+        all_distances[key] = distance
+    return all_distances
+
+
 def find_matching_shows(favorite_shows, embeddings):
     """
     Find TV shows that match the user's favorite shows based on embeddings.
@@ -127,18 +148,12 @@ def find_matching_shows(favorite_shows, embeddings):
     average = np.mean(favorite_embeddings, axis=0)
 
     #Compute distance 
-
-    all_distances = {}
-    for key, element in embeddings.items():
-        if key in favorite_shows:
-            continue
-        distance = cosine_similarity(average, element)
-        all_distances[key] = distance
+    all_distances = compute_distances(favorite_shows, embeddings, average)
 
     smallest_elements = sorted(all_distances.items(), key=lambda x: x[1], reverse=True)[:5]
     recommended_shows = [x[0] for x in smallest_elements]
-    # print(smallest_elements)
-    # print(recommended_shows)
+    print(smallest_elements)
+    print(recommended_shows)
     return recommended_shows
 
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
@@ -267,7 +282,6 @@ def generate_show_ads(description1, description2):
     # os.system("open show1_ad.jpg")  # For MacOS
     # os.system("start show1_ad.jpg")  # For Windows
 
-
 if __name__ == "__main__":
 
     while True:
@@ -309,7 +323,7 @@ if __name__ == "__main__":
     show2name = extract_show_name(content2)
     concept1 = extract_concept(content1)
     concept2 = extract_concept(content2)
-    generate_show_ads(content1, content2)
+    #generate_show_ads(content1, content2)
    
 
 
