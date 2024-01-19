@@ -63,18 +63,21 @@ def find_matching_shows(favorite_shows, embeddings):
     average = np.mean(favorite_embeddings, axis=0)
 
     #Compute distance 
+    all_distances = compute_distances(favorite_shows, embeddings, average)
 
+    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
+    best_matches = [x[0] for x in smallest_elements]
+    print(smallest_elements)
+    print(best_matches)
+
+def compute_distances(favorite_shows, embeddings, average):
     all_distances = {}
     for key, element in embeddings.items():
         if key in favorite_shows:
             continue
         distance = cosine_similarity(average, element)
         all_distances[key] = distance
-
-    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1])[:5]
-    best_matches = [x[0] for x in smallest_elements]
-    print(smallest_elements)
-    print(best_matches)
+    return all_distances
 
 
 if __name__ == "__main__":
