@@ -7,21 +7,26 @@ import pickle
 import numpy as np
 
 
-
 load_dotenv()
 
 
-def ask_user(user_input):
-    shows_list = user_input.split(",")
-    # Check if the user entered more than 1 show or if there is an empty string/whitespaces only
-    if len(shows_list) < 2 or not all(show.strip() for show in shows_list):
-        return None
-    return shows_list
+def user_input_to_shows_list(user_input):
+    shows_list = user_input.split(",")    
+    shows_list_stripped = [show.strip() for show in shows_list]
+    return shows_list_stripped
 
 def get_favorite_tv_shows(shows_list, known_shows):
+    
     if shows_list:
+
+        # Check if the user entered more than 1 show or if there is an empty string/whitespaces only
+        if len(set(shows_list)) < 2 or not all(shows_list):
+            return None
+
         matched_shows = [process.extractOne(show, known_shows)[0] for show in shows_list]
-        return matched_shows
+        #Remove repeated shows
+        return list(set(matched_shows))
+    
     return None
 
 def read_csv_file(file_path):
@@ -30,8 +35,6 @@ def read_csv_file(file_path):
         return tv_shows
     except Exception as e:
         print(f"Error reading CSV file: {e}")
-
-
 
 def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
     embeddings_dict = {}
@@ -78,12 +81,14 @@ def find_matching_shows(favorite_shows, embeddings):
 
 
 if __name__ == "__main__":
+
     while True:
         user_input = input("Which TV shows did you love watching? Separate them by a comma. Make sure to enter more than 1 show: \n")
-        # user_inputs.append(user_input)
-        shows_list = ask_user(user_input)
+        shows_list = user_input_to_shows_list(user_input)
+
         known_tv_shows = read_csv_file('./imdb_tvshows - imdb_tvshows.csv') 
         favorite_shows = get_favorite_tv_shows(shows_list, known_tv_shows['Title'])
+
         if favorite_shows:
             print(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
             confirmation = input()
