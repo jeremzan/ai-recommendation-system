@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import math
+import requests
 
 load_dotenv()
 
@@ -271,7 +272,7 @@ def extract_plot(description):
 
     return "Plot not available"  # Fallback if "Plot:" is not found
 
-def generate_show_ads(plot1, plot2):
+def generate_show_ads(plot1, plot2, client):
     """
     Generate advertisements for TV shows based on their descriptions using DALL-E API.
 
@@ -301,8 +302,20 @@ def generate_show_ads(plot1, plot2):
 
     image_url1 = image_data1.data[0].url
     image_url2 = image_data2.data[0].url
-    print(image_url1)
-    print(image_url2)
+    # print(image_url1)
+    # print(image_url2)
+
+     # Download and display the first image
+    response1 = requests.get(image_url1)
+    if response1.status_code == 200:
+        image1 = Image.open(BytesIO(response1.content))
+        image1.show()
+
+    # Download and display the second image
+    response2 = requests.get(image_url2)
+    if response2.status_code == 200:
+        image2 = Image.open(BytesIO(response2.content))
+        image2.show()
 
 
 if __name__ == "__main__":
@@ -348,9 +361,7 @@ if __name__ == "__main__":
     concept2 = extract_concept(content2)
     plot1 = extract_plot(content1)
     plot2 = extract_plot(content2)
-    generate_show_ads(plot1, plot2)
-   
-
+    
     # Final message
     final_message = (
         f"I have also created just for you two shows which I think you would love. "
@@ -361,3 +372,5 @@ if __name__ == "__main__":
         f"Here are also the 2 tv show ads. Hope you like them!"
     )
     print(final_message)
+
+    generate_show_ads(plot1, plot2, client)
