@@ -4,19 +4,19 @@ import os
 from show_suggester_ai import user_input_to_shows_list, get_favorite_tv_shows, generate_show_descriptions
 
 def test_ask_user_valid_input():
-    assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch",""]
+    assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch"]
     assert user_input_to_shows_list("Game of") == ["Game of"]
 
 def test_ask_user_empty_input():
-    assert user_input_to_shows_list("") == [""]
+    assert user_input_to_shows_list("") == []
 
 def test_ask_user_whitespace_input():
-    assert user_input_to_shows_list("   ") == [""]
+    assert user_input_to_shows_list("   ") == []
 
 def test_get_favorite_tv_shows():
     known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
 
-    user_input = "Ge of Thrs, Witcer    ,  witcer, Breaking bud"
+    user_input = "Ge of Thrs, Witcer    ,  witcer, Breaking bud,"
     shows_list = user_input_to_shows_list(user_input)
     assert set(get_favorite_tv_shows(shows_list, known_shows)) == set(["Game of Thrones", "The Witcher", "Breaking Bad"])
 
