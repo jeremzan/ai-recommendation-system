@@ -256,7 +256,7 @@ def generate_show_ads(description1, description2):
     Returns:
         None (displays generated images).
     """
-    prompt1 = f"Create a visually striking movie poster based on the following description: {description1}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text. If you can, just not write any text"
+    prompt1 = f"Create a visually striking movie poster based on the following description: {description1}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
     prompt2 = f"Create a visually striking movie poster based on the following description: {description2}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
 
     image_data1 = client.images.generate(
