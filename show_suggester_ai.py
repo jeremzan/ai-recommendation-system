@@ -152,12 +152,6 @@ def find_matching_shows(favorite_shows, embeddings):
 
     best_recommendation_shows = sorted(distances_dict.items(), key=lambda x: x[1], reverse=True)[:5]
     recommended_shows = [best_show[0] for best_show in best_recommendation_shows]
-    print(best_recommendation_shows)
-    #print(recommended_shows)
-    for title, similarity in best_recommendation_shows:
-        print(title)
-        perc_dist = (similarity + 1) * 0.5
-        print(perc_dist)
         
     return recommended_shows
 
@@ -329,6 +323,8 @@ if __name__ == "__main__":
     recommended_shows = find_matching_shows(favorite_shows, embeddings)
 
     content1, content2 = generate_show_descriptions(favorite_shows, recommended_shows, client)
+    print(content1)
+    print(content2)
 
     show1name = extract_show_name(content1)
     show2name = extract_show_name(content2)
