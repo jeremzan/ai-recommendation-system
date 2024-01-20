@@ -7,6 +7,7 @@ import pickle
 import numpy as np
 from PIL import Image
 from io import BytesIO
+import math
 
 load_dotenv()
 
@@ -120,14 +121,13 @@ def compute_distances(favorite_shows, embeddings, average):
     Returns:
         dict: A dictionary containing TV show names as keys and cosine distances as values.
     """
-    all_distances = {}
-    for key, element in embeddings.items():
-        if key in favorite_shows:
+    distances_dict = {}
+    for show, embedding in embeddings.items():
+        if show in favorite_shows:
             continue
-        distance = cosine_similarity(average, element)
-        all_distances[key] = distance
-    return all_distances
-
+        distance = cosine_similarity(average, embedding)
+        distances_dict[show] = distance
+    return distances_dict
 
 def find_matching_shows(favorite_shows, embeddings):
     """
@@ -145,15 +145,20 @@ def find_matching_shows(favorite_shows, embeddings):
         favorite_embeddings.append(embeddings[show])
     
     #Compute average of favorite shows
-    average = np.mean(favorite_embeddings, axis=0)
+    average_array = np.mean(favorite_embeddings, axis=0)
 
     #Compute distance 
-    all_distances = compute_distances(favorite_shows, embeddings, average)
+    distances_dict = compute_distances(favorite_shows, embeddings, average_array)
 
-    smallest_elements = sorted(all_distances.items(), key=lambda x: x[1], reverse=True)[:5]
-    recommended_shows = [x[0] for x in smallest_elements]
-    print(smallest_elements)
-    print(recommended_shows)
+    best_recommendation_shows = sorted(distances_dict.items(), key=lambda x: x[1], reverse=True)[:5]
+    recommended_shows = [best_show[0] for best_show in best_recommendation_shows]
+    print(best_recommendation_shows)
+    #print(recommended_shows)
+    for title, similarity in best_recommendation_shows:
+        print(title)
+        perc_dist = (similarity + 1) * 0.5
+        print(perc_dist)
+        
     return recommended_shows
 
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
@@ -251,8 +256,8 @@ def generate_show_ads(description1, description2):
     Returns:
         None (displays generated images).
     """
-    prompt1 = f"Create an advertisement for a TV show based on the description: {description1}"
-    prompt2 = f"Create an advertisement for a TV show based on the description: {description2}"
+    prompt1 = f"Create a visually striking movie poster based on the following description: {description1}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text. If you can, just not write any text"
+    prompt2 = f"Create a visually striking movie poster based on the following description: {description2}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
 
     image_data1 = client.images.generate(
         model="dall-e-3",
@@ -267,12 +272,18 @@ def generate_show_ads(description1, description2):
         quality="standard",
         n=1,)
 
-    # Decode and save or display images
-    image1 = Image.open(BytesIO(image_data1))
-    image2 = Image.open(BytesIO(image_data2))
 
-    image1.show()  # This will open the image using the default viewer
-    image2.show()  
+    image_url1 = image_data1.data[0].url
+    image_url2 = image_data2.data[0].url
+    print(image_url1)
+    print(image_url2)
+
+    # Decode and save or display images
+    #image1 = Image.open(BytesIO(image_data1))
+    #image2 = Image.open(BytesIO(image_data2))
+
+    #image1.show()  # This will open the image using the default viewer
+    #image2.show()  
 
     # # If you want to save the images
     # image1.save("show1_ad.jpg")
@@ -323,7 +334,7 @@ if __name__ == "__main__":
     show2name = extract_show_name(content2)
     concept1 = extract_concept(content1)
     concept2 = extract_concept(content2)
-    #generate_show_ads(content1, content2)
+    generate_show_ads(content1, content2)
    
 
 
