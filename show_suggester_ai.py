@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import math
+import requests
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ def user_input_to_shows_list(user_input):
     """
     shows_list = user_input.split(",")    
     shows_list_stripped = [show.strip() for show in shows_list]
+    shows_list_stripped = list(filter(None, shows_list_stripped))   # Remove empty strings from the list
     return shows_list_stripped
 
 def get_favorite_tv_shows(shows_list, known_shows):
@@ -36,21 +38,16 @@ def get_favorite_tv_shows(shows_list, known_shows):
     Returns:
         list: List of favorite TV show names that match the known TV shows, or None if criteria are not met.
     """
-    if shows_list:
-        # Check  if there is an empty string/whitespaces only
-        if not all(shows_list):
-            return None
-        
-        matched_shows = [process.extractOne(show, known_shows)[0] for show in shows_list]
-
-        # Check if the user entered more than 1 show 
-        if len(set(matched_shows)) < 2 :
-            return None
-
-        return list(set(matched_shows)) # Remove repeated shows
     
-    return None
+    matched_shows = [process.extractOne(show, known_shows)[0] for show in shows_list] 
+    matched_shows_without_rep = list(set(matched_shows))    # Remove repeated shows
 
+    # Check if the user entered more than 1 show 
+    if  len(matched_shows_without_rep) < 2 :
+        return None
+
+    return matched_shows_without_rep
+    
 def read_csv_file(file_path):
     """
     Read data from a CSV file into a DataFrame.
@@ -177,12 +174,12 @@ def generate_show_descriptions(favorite_shows, recommended_shows, client, model=
     prompt1 = f"""Create a concept for a new TV show based on: {favorite_shows_str}. 
     The format of you response should be:
     Title : <title of the show>
-    Concept: <description of the show>
+    Concept: <title of the show> is a <description of the show>
     Plot: <description of the plot>"""
     prompt2 = f"""Create a concept for a new TV show based on: {recommended_shows_str}. 
     The format of you response should be:
     Title : <title of the show>
-    Concept: <description of the show>
+    Concept: <title of the show> is a <description of the show>
     Plot: <description of the plot>"""
 
     response1 = client.chat.completions.create(
@@ -227,19 +224,49 @@ def extract_concept(description):
     Returns:
         str: Extracted TV show concept or "Concept not available" if not found.
     """
-    concept_start = description.find("Concept:")
-    plot_start = description.find("Plot:", concept_start)
+    concept_label = "Concept:"
+    plot_label = "Plot:"
+    key_phrase = "is a"
 
-    if concept_start != -1 and plot_start != -1:
-        concept_text = description[concept_start + 7:plot_start].strip()  # +7 to skip "Concept:" part
-    elif concept_start != -1:
-        concept_text = description[concept_start + 7:].strip()  # +7 to skip "Concept:" part
-    else:
-        return "Concept not available"  # Fallback if "Concept:" is not found
+    # Find the start of the "Concept:" section
+    concept_start = description.find(concept_label)
 
-    return concept_text
+    if concept_start != -1:
+        # Find the start of the "Plot:" section
+        plot_start = description.find(plot_label, concept_start)
 
-def generate_show_ads(description1, description2):
+        # Extract everything from "Concept:" to "Plot:"
+        if plot_start != -1:
+            concept_text = description[concept_start:plot_start].strip()
+        else:
+            concept_text = description[concept_start:].strip()
+
+        # Find and skip past "is a" in the concept text
+        key_phrase_index = concept_text.find(key_phrase)
+        if key_phrase_index != -1:
+            # Start extraction from just after "is a"
+            start_index = key_phrase_index + len(key_phrase)
+            concept_text = concept_text[start_index:].strip()
+        else:
+            return "Detailed concept description not available"
+
+        return concept_text
+
+    return "Concept not available"  # Fallback if "Concept:" is not found
+
+def extract_plot(description):
+    plot_label = "Plot:"
+    plot_start = description.find(plot_label)
+
+    if plot_start != -1:
+        # Start extraction right after "Plot:"
+        start_index = plot_start + len(plot_label)
+        plot_text = description[start_index:].strip()
+        return plot_text
+
+    return "Plot not available"  # Fallback if "Plot:" is not found
+
+def generate_show_ads(plot1, plot2, client):
     """
     Generate advertisements for TV shows based on their descriptions using DALL-E API.
 
@@ -250,8 +277,8 @@ def generate_show_ads(description1, description2):
     Returns:
         None (displays generated images).
     """
-    prompt1 = f"Create a visually striking movie poster based on the following description: {description1}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
-    prompt2 = f"Create a visually striking movie poster based on the following description: {description2}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
+    prompt1 = f"Create a visually striking movie poster based on the following description: {plot1}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
+    prompt2 = f"Create a visually striking movie poster based on the following description: {plot2}. The poster should feature the main characters, key setting, and central theme of the show. Emphasize the mood and genre through color scheme and composition. Include a subtle title in a font style that matches the show's atmosphere. Minimize text to ensure the focus remains on the visual elements. The poster should vividly represent the essence of the show without relying heavily on text."
 
     image_data1 = client.images.generate(
         model="dall-e-3",
@@ -269,23 +296,21 @@ def generate_show_ads(description1, description2):
 
     image_url1 = image_data1.data[0].url
     image_url2 = image_data2.data[0].url
-    print(image_url1)
-    print(image_url2)
+    # print(image_url1)
+    # print(image_url2)
 
-    # Decode and save or display images
-    #image1 = Image.open(BytesIO(image_data1))
-    #image2 = Image.open(BytesIO(image_data2))
+     # Download and display the first image
+    response1 = requests.get(image_url1)
+    if response1.status_code == 200:
+        image1 = Image.open(BytesIO(response1.content))
+        image1.show()
 
-    #image1.show()  # This will open the image using the default viewer
-    #image2.show()  
+    # Download and display the second image
+    response2 = requests.get(image_url2)
+    if response2.status_code == 200:
+        image2 = Image.open(BytesIO(response2.content))
+        image2.show()
 
-    # # If you want to save the images
-    # image1.save("show1_ad.jpg")
-    # image2.save("show2_ad.jpg")
-
-    # # If you want to open saved images using OS default viewer
-    # os.system("open show1_ad.jpg")  # For MacOS
-    # os.system("start show1_ad.jpg")  # For Windows
 
 if __name__ == "__main__":
 
@@ -305,7 +330,7 @@ if __name__ == "__main__":
             else:
                 print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
         else:
-                print("Please enter at least 2 TV shows and don't leave any empty spaces between commas.\n")   
+                print("Please enter at least 2 different TV shows.\n")   
 
 
     try:
@@ -330,17 +355,18 @@ if __name__ == "__main__":
     show2name = extract_show_name(content2)
     concept1 = extract_concept(content1)
     concept2 = extract_concept(content2)
-    generate_show_ads(content1, content2)
-   
-
-
+    plot1 = extract_plot(content1)
+    plot2 = extract_plot(content2)
+    
     # Final message
     final_message = (
         f"I have also created just for you two shows which I think you would love. "
         f"Show #1 is based on the fact that you loved the input shows that you gave me. "
-        f"Its name is {show1name} and it is about {concept1}\n"
+        f"Its name is {show1name} and it is a {concept1}\n"
         f"Show #2 is based on the shows that I recommended for you. "
-        f"Its name is {show2name} and it is about {concept2} "
+        f"Its name is {show2name} and it is a {concept2} "
         f"Here are also the 2 tv show ads. Hope you like them!"
     )
     print(final_message)
+
+    generate_show_ads(plot1, plot2, client)
