@@ -1,7 +1,8 @@
 import pytest
+import logging
 import openai as OpenAI
 import os
-from show_suggester_ai import user_input_to_shows_list, get_favorite_tv_shows, generate_show_descriptions
+from show_suggester_ai import user_input_to_shows_list, get_favorite_tv_shows, generate_show_descriptions, find_matching_shows
 
 def test_ask_user_valid_input():
     assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch"]
@@ -60,3 +61,74 @@ def test_generate_show_descriptions():
         print(description2)
     except Exception as e:
         print(f"Error generating show descriptions: {e}")
+
+def test_len_find_matching_shows():
+    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
+    embeddings = {
+        'Show 1': [1,6,-1,3],
+        'Show 2': [0,2,1,2],
+        'Show 3': [0,1,3,-5],
+        'Show 4': [0,0,1,2],
+        'Show 5': [3,-1,-2,1],
+        'Show 6': [1,0,7,-3],
+        'Show 7': [4,2,3,4],
+        'Show 8': [2,-2,5,6],
+        'Show 9': [1,3,3-1,-2],
+        'Show 10': [3,1,2,-3],
+    }
+    recommanded_show = find_matching_shows(favorite_shows, embeddings)
+    assert len(recommanded_show.items()) == 5
+
+def test_type_find_matching_shows():
+    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
+    embeddings = {
+        'Show 1': [1,6,-1,3],
+        'Show 2': [0,2,1,2],
+        'Show 3': [0,1,3,-5],
+        'Show 4': [0,0,1,2],
+        'Show 5': [3,-1,-2,1],
+        'Show 6': [1,0,7,-3],
+        'Show 7': [4,2,3,4],
+        'Show 8': [2,-2,5,6],
+        'Show 9': [1,3,3-1,-2],
+        'Show 10': [3,1,2,-3],
+    }
+    recommanded_show = find_matching_shows(favorite_shows, embeddings)
+    assert type(recommanded_show) == dict
+
+def test_valid_matching_shows():
+    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
+    embeddings = {
+        'Show 1': [1,6,-1,3],
+        'Show 2': [0,2,1,2],
+        'Show 3': [0,1,3,-5],
+        'Show 4': [0,0,1,2],
+        'Show 5': [3,-1,-2,1],
+        'Show 6': [1,0,7,-3],
+        'Show 7': [4,2,3,4],
+        'Show 8': [2,-2,5,6],
+        'Show 9': [1,3,3-1,-2],
+        'Show 10': [3,1,2,-3],
+    }
+    recommanded_show = find_matching_shows(favorite_shows, embeddings)
+    assert any(show in recommanded_show.keys() for show in embeddings.keys())
+
+
+    
+def test_find_matching_shows():
+    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
+    embeddings = {
+        'Show 1': [1,6,-1,3],
+        'Show 2': [0,2,1,2],
+        'Show 3': [0,1,3,-5],
+        'Show 4': [0,0,1,2],
+        'Show 5': [3,-1,-2,1],
+        'Show 6': [1,0,7,-3],
+        'Show 7': [4,2,3,4],
+        'Show 8': [2,-2,5,6],
+        'Show 9': [1,3,3-1,-2],
+        'Show 10': [3,1,2,-3],
+    }
+    recommanded_show = find_matching_shows(favorite_shows, embeddings)
+    print(recommanded_show.keys())
+    assert set(recommanded_show.keys()) == set(['Show 9', 'Show 10', 'Show 7', 'Show 4', 'Show 6'])
