@@ -154,8 +154,6 @@ def find_matching_shows(favorite_shows, embeddings):
         percentage = int((distance / max_similarity) * 100)
         recommendation_percentages[key] = percentage
 
-
-        
     return recommendation_percentages
 
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
