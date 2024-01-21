@@ -1,12 +1,20 @@
+import pickle
+from unittest.mock import ANY, Mock, mock_open, patch 
+from PIL import Image
+from io import BytesIO
+from dotenv import load_dotenv
 import pytest
 import logging
 import openai as OpenAI
 import os
-from show_suggester_ai import user_input_to_shows_list, get_favorite_tv_shows, generate_show_descriptions, find_matching_shows
+import pandas as pd
+from show_suggester_ai import generate_show_ads, generate_embeddings, user_input_to_shows_list, get_favorite_tv_shows, read_csv_file, generate_show_descriptions, find_matching_shows
+
+load_dotenv()
 
 def test_ask_user_valid_input():
     assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch"]
-    assert user_input_to_shows_list("Game of") == ["Game of"]
+    assert user_input_to_shows_list("Game of ,   ") == ["Game of"]
 
 def test_ask_user_empty_input():
     assert user_input_to_shows_list("") == []
@@ -45,6 +53,17 @@ def test_get_favorite_tv_shows_valid_shows():
     known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
     shows_list = ["Game of Thrones", "The Witcher", "Breaking Bad"]
     assert set(get_favorite_tv_shows(shows_list, known_shows)) == set(["Game of Thrones", "The Witcher", "Breaking Bad"])
+
+def test_read_csv_file_valid_file():
+    file_path = "./imdb_tvshows - imdb_tvshows.csv"
+    tv_shows = read_csv_file(file_path)
+    assert isinstance(tv_shows, pd.DataFrame)
+
+def test_read_csv_file_invalid_file():
+    file_path = "path/to/invalid/file.csv"
+    tv_shows = read_csv_file(file_path)
+    assert tv_shows is None
+
 
 def test_generate_show_descriptions():
     try :
@@ -132,3 +151,78 @@ def test_find_matching_shows():
     recommanded_show = find_matching_shows(favorite_shows, embeddings)
     print(recommanded_show.keys())
     assert set(recommanded_show.keys()) == set(['Show 9', 'Show 10', 'Show 7', 'Show 4', 'Show 6'])
+    
+
+def test_generate_embeddings():
+    # Create a mock DataFrame with sample TV show data
+    tv_shows = pd.DataFrame({
+        'Title': ['Show 1', 'Show 2', 'Show 3'],
+        'Description': ['Description 1', 'Description 2', 'Description 3']
+    })
+
+    # Create a mock OpenAI client
+    class MockOpenAIClient:
+        def __init__(self):
+            self.embeddings = MockEmbeddings()
+
+    # Create a mock OpenAI embeddings API
+    class MockEmbeddings:
+        def create(self, input, model):
+            return MockResponse()
+
+    # Create a mock OpenAI embeddings API response
+    class MockResponse:
+        def __init__(self):
+            self.data = [MockEmbedding()]
+
+    # Create a mock embedding
+    class MockEmbedding:
+        def __init__(self):
+            self.embedding = [0.1, 0.2, 0.3]
+
+    # Mock the 'open' function to avoid writing to a file
+    with patch('builtins.open', mock_open()) as mock_file:
+        # Mock the OpenAI client
+        with patch('openai.OpenAI', MockOpenAIClient):
+            # Call the generate_embeddings function
+            generate_embeddings(tv_shows, MockOpenAIClient())
+
+            # Read the written data from the mock file
+            written_data = mock_file().write.call_args[0][0]
+            embeddings_dict_from_file = pickle.loads(written_data)
+
+    # Assert that the embeddings dictionary is correctly generated
+    expected_embeddings_dict = {
+        'Show 1': [0.1, 0.2, 0.3],
+        'Show 2': [0.1, 0.2, 0.3],
+        'Show 3': [0.1, 0.2, 0.3]
+    }
+    assert embeddings_dict_from_file == expected_embeddings_dict
+
+    # Assert that the file is opened and written to
+    mock_file.assert_any_call('embeddings.pkl', 'wb')
+    mock_file().write.assert_called_once()
+
+
+def test_generate_show_ads():
+    client = None
+    images = None
+
+    try:
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    except Exception as e:
+        print(f"Error creating OpenAI client: {e}")
+
+    if client is not None:
+        try:
+            images = generate_show_ads("A bird on a tree", "A shark in the sea", client)
+            # Assert the URLs are as expected
+            assert len(images) == 2  # Adjust this to match the expected number of images
+        except Exception as e:
+            print(f"Error generating show ads: {e}")
+            assert False  # Fail the test if an exception occurs
+
+    else:
+        assert False  # Fail the test if client is not created
+
+   

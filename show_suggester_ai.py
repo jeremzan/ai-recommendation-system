@@ -20,7 +20,7 @@ def user_input_to_shows_list(user_input):
         user_input (str): User input string with TV show names separated by commas.
 
     Returns:
-        list: List of TV show names with leading and trailing whitespaces removed.
+        list: List of TV show names with leading and trailing whitespaces removed and without empty strings.
     """
     shows_list = user_input.split(",")    
     shows_list_stripped = [show.strip() for show in shows_list]
@@ -300,8 +300,6 @@ def generate_show_ads(plot1, plot2, client):
 
     image_url1 = image_data1.data[0].url
     image_url2 = image_data2.data[0].url
-    # print(image_url1)
-    # print(image_url2)
 
      # Download and display the first image
     response1 = requests.get(image_url1)
@@ -314,6 +312,8 @@ def generate_show_ads(plot1, plot2, client):
     if response2.status_code == 200:
         image2 = Image.open(BytesIO(response2.content))
         image2.show()
+
+    return image_url1, image_url2
 
 
 if __name__ == "__main__":
@@ -375,4 +375,8 @@ if __name__ == "__main__":
     )
     print(final_message)
 
-    generate_show_ads(plot1, plot2, client)
+    images = generate_show_ads(plot1, plot2, client)
+
+    print(f"""To open the images in the browser click here :
+          Show #1 : {images[0]}
+          Show #2 : {images[1]}""")
