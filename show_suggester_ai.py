@@ -148,15 +148,15 @@ def find_matching_shows(favorite_shows, embeddings):
     distances_dict = compute_distances(favorite_shows, embeddings, average_array)
 
     best_recommendation_shows = sorted(distances_dict.items(), key=lambda x: x[1], reverse=True)[:5]
-    recommended_shows = [best_show[0] for best_show in best_recommendation_shows]
-    print(best_recommendation_shows)
-    #print(recommended_shows)
-    for title, similarity in best_recommendation_shows:
-        print(title)
-        perc_dist = (similarity + 1) * 0.5
-        print(perc_dist)
+    max_similarity = best_recommendation_shows[0][1]  # Get the highest similarity
+    recommendation_percentages = {}
+    for key, distance in best_recommendation_shows:
+        percentage = int((distance / max_similarity) * 100)
+        recommendation_percentages[key] = percentage
+
+
         
-    return recommended_shows
+    return recommendation_percentages
 
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
     """
@@ -352,6 +352,10 @@ if __name__ == "__main__":
         embeddings = pickle.load(embedding_file)
 
     recommended_shows = find_matching_shows(favorite_shows, embeddings)
+
+    #Print recommanded shows and percentage
+    for show, percentage in recommended_shows.items():
+        print(f'{show} ({percentage}%)')
 
     content1, content2 = generate_show_descriptions(favorite_shows, recommended_shows, client)
 
