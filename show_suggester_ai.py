@@ -129,32 +129,38 @@ def compute_distances(favorite_shows, embeddings, average):
 def find_matching_shows(favorite_shows, embeddings):
     """
     Find TV shows that match the user's favorite shows based on embeddings.
+    Apply linear transformation to the cosine similarity scores.
 
     Args:
         favorite_shows (list): List of user's favorite TV show names.
         embeddings (dict): Dictionary mapping TV show names to embeddings.
 
     Returns:
-        list: List of recommended TV show names.
+        list: List of recommended TV show names with adjusted percentages.
     """
-    favorite_embeddings = []
-    for show in favorite_shows:
-        favorite_embeddings.append(embeddings[show])
-    
-    #Compute average of favorite shows
+    favorite_embeddings = [embeddings[show] for show in favorite_shows]
     average_array = np.mean(favorite_embeddings, axis=0)
-
-    #Compute distance 
     distances_dict = compute_distances(favorite_shows, embeddings, average_array)
 
-    best_recommendation_shows = sorted(distances_dict.items(), key=lambda x: x[1], reverse=True)[:5]
-    max_similarity = best_recommendation_shows[0][1]  # Get the highest similarity
-    recommendation_percentages = {}
-    for key, distance in best_recommendation_shows:
-        percentage = int((distance / max_similarity) * 100)
-        recommendation_percentages[key] = percentage
+    # Get the minimum and maximum distances
+    min_distance = min(distances_dict.values())
+    max_distance = max(distances_dict.values())
 
-    return recommendation_percentages
+    # Linearly scale distances to a range of 10% to 100%
+    scaled_distances = {
+        show: int(10 + 90 * (distance - min_distance) / (max_distance - min_distance))
+        for show, distance in distances_dict.items()
+    }
+
+    # # Linearly scale distances to a range of 10% to 98%
+    # scaled_distances = {
+    #     show: int(10 + 88 * (distance - min_distance) / (max_distance - min_distance))
+    #     for show, distance in distances_dict.items()
+    # }
+
+    # Sort and select top 5 shows
+    best_recommendation_shows = sorted(scaled_distances.items(), key=lambda x: x[1], reverse=True)[:5]
+    return dict(best_recommendation_shows)
 
 def generate_show_descriptions(favorite_shows, recommended_shows, client, model="gpt-3.5-turbo"):
     """
@@ -314,7 +320,6 @@ def generate_show_ads(plot1, plot2, client):
         image2.show()
 
     return image_url1, image_url2
-
 
 def create_openai_client():
     try:
