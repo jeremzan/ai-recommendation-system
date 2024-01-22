@@ -1,16 +1,11 @@
 import pickle
-from unittest.mock import ANY, Mock, mock_open, patch 
+from unittest.mock import Mock, patch 
 from PIL import Image
 from io import BytesIO
-from dotenv import load_dotenv
 import pytest
-import logging
-import openai as OpenAI
-import os
 import pandas as pd
 from show_suggester_ai import generate_show_ads, generate_embeddings, user_input_to_shows_list, get_favorite_tv_shows, read_csv_file, generate_show_descriptions, find_matching_shows
 
-load_dotenv()
 
 def test_ask_user_valid_input():
     assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch"]
@@ -64,22 +59,31 @@ def test_read_csv_file_invalid_file():
     tv_shows = read_csv_file(file_path)
     assert tv_shows is None
 
+@patch('show_suggester_ai.create_openai_client')
+def test_generate_show_descriptions(mock_create_client):
+    # Mock data
+    favorite_shows = ['Friends', 'Breaking Bad']
+    recommended_shows = ['Game of Thrones', 'The Witcher']
 
-def test_generate_show_descriptions():
-    try :
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    except Exception as e:
-        print(f"Error creating OpenAI client: {e}")
+    mock_client = Mock()
+    mock_create_client.return_value = mock_client
 
-    favorite_shows = ["Game of Thrones", "The Witcher"]
-    recommended_shows = ["Breaking Bad", "Stranger Things"]
-    model = "gpt-3.5-turbo"
-    try :
-        description1, description2 = generate_show_descriptions(favorite_shows, recommended_shows, client, model)
-        print(description1)
-        print(description2)
-    except Exception as e:
-        print(f"Error generating show descriptions: {e}")
+    # Mock response
+    mock_response = Mock()
+    mock_response.choices = [Mock(message=Mock(content='Show 1 Description')), 
+                             Mock(message=Mock(content='Show 2 Description'))]
+
+    mock_client.chat.completions.create.return_value = mock_response
+
+    # Call the function with the mock client
+    with patch('show_suggester_ai.create_openai_client', mock_client):  
+        result = generate_show_descriptions(favorite_shows, recommended_shows, mock_client)
+
+    # Check if the result is a tuple and contains two elements
+    assert isinstance(result, tuple), "Result should be a tuple"
+    assert len(result) == 2, "Result should contain two elements"
+    assert isinstance(result[0], str), "First element of the result should be a string"
+    assert isinstance(result[1], str), "Second element of the result should be a string"
 
 def test_len_find_matching_shows():
     favorite_shows = ['Show 1', 'Show 2', 'Show 3']
@@ -132,8 +136,6 @@ def test_valid_matching_shows():
     recommanded_show = find_matching_shows(favorite_shows, embeddings)
     assert any(show in recommanded_show.keys() for show in embeddings.keys())
 
-
-    
 def test_find_matching_shows():
     favorite_shows = ['Show 1', 'Show 2', 'Show 3']
     embeddings = {
@@ -153,76 +155,91 @@ def test_find_matching_shows():
     assert set(recommanded_show.keys()) == set(['Show 9', 'Show 10', 'Show 7', 'Show 4', 'Show 6'])
     
 
-def test_generate_embeddings():
-    # Create a mock DataFrame with sample TV show data
-    tv_shows = pd.DataFrame({
-        'Title': ['Show 1', 'Show 2', 'Show 3'],
-        'Description': ['Description 1', 'Description 2', 'Description 3']
+@patch('show_suggester_ai.create_openai_client')
+@patch('builtins.open')  # Mock the open function
+@patch('pickle.dump')  # Mock the pickle.dump function
+def test_generate_embeddings(mock_pickle_dump, mock_open, mock_create_client):
+    # Create a mock OpenAI client
+    mock_client = Mock()
+    mock_create_client.return_value = mock_client
+
+    # Prepare sample TV shows data
+    sample_data = pd.DataFrame({
+        'Title': ['Show 1', 'Show 2'],
+        'Description': ['Description of Show 1', 'Description of Show 2']
     })
 
-    # Create a mock OpenAI client
-    class MockOpenAIClient:
-        def __init__(self):
-            self.embeddings = MockEmbeddings()
+    # Mock embeddings response
+    mock_response1 = Mock()
+    mock_response1.data = [Mock(embedding=[0.1, 0.2, 0.3])]
 
-    # Create a mock OpenAI embeddings API
-    class MockEmbeddings:
-        def create(self, input, model):
-            return MockResponse()
+    mock_response2 = Mock()
+    mock_response2.data = [Mock(embedding=[0.4, 0.5, 0.6])]
 
-    # Create a mock OpenAI embeddings API response
-    class MockResponse:
-        def __init__(self):
-            self.data = [MockEmbedding()]
+    # Configure the mock client to return these mock responses
+    mock_client.embeddings.create.side_effect = [mock_response1, mock_response2]
 
-    # Create a mock embedding
-    class MockEmbedding:
-        def __init__(self):
-            self.embedding = [0.1, 0.2, 0.3]
+    # Call the function
+    generate_embeddings(sample_data, mock_client)
 
-    # Mock the 'open' function to avoid writing to a file
-    with patch('builtins.open', mock_open()) as mock_file:
-        # Mock the OpenAI client
-        with patch('openai.OpenAI', MockOpenAIClient):
-            # Call the generate_embeddings function
-            generate_embeddings(tv_shows, MockOpenAIClient())
-
-            # Read the written data from the mock file
-            written_data = mock_file().write.call_args[0][0]
-            embeddings_dict_from_file = pickle.loads(written_data)
-
-    # Assert that the embeddings dictionary is correctly generated
-    expected_embeddings_dict = {
+    # Check that embeddings are correctly formed and pickle.dump is called
+    expected_embeddings = {
         'Show 1': [0.1, 0.2, 0.3],
-        'Show 2': [0.1, 0.2, 0.3],
-        'Show 3': [0.1, 0.2, 0.3]
+        'Show 2': [0.4, 0.5, 0.6]
     }
-    assert embeddings_dict_from_file == expected_embeddings_dict
+    mock_pickle_dump.assert_called_once_with(expected_embeddings, mock_open.return_value.__enter__.return_value)
 
-    # Assert that the file is opened and written to
-    mock_file.assert_any_call('embeddings.pkl', 'wb')
-    mock_file().write.assert_called_once()
+    # Check that the file is opened in binary write mode
+    mock_open.assert_called_once_with('embeddings.pkl', 'wb')
 
 
-def test_generate_show_ads():
-    client = None
-    images = None
+@patch('show_suggester_ai.create_openai_client')
+def test_generate_show_ads(mock_create_client):
+    # Create a dummy image and get its byte stream
+    dummy_image = Image.new('RGB', (100, 100), color = 'red')
+    img_byte_arr = BytesIO()
+    dummy_image.save(img_byte_arr, format='PNG')
+    img_byte_arr = img_byte_arr.getvalue()
 
-    try:
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    except Exception as e:
-        print(f"Error creating OpenAI client: {e}")
+    # Mock the OpenAI client
+    mock_client = Mock()
+    mock_create_client.return_value = mock_client
 
-    if client is not None:
-        try:
-            images = generate_show_ads("A bird on a tree", "A shark in the sea", client)
-            # Assert the URLs are as expected
-            assert len(images) == 2  # Adjust this to match the expected number of images
-        except Exception as e:
-            print(f"Error generating show ads: {e}")
-            assert False  # Fail the test if an exception occurs
+    # Mock response for DALL-E API calls
+    mock_image_data1 = Mock()
+    mock_image_data1.data = [Mock(url='https://mockurl1.com/image1')]
+    mock_image_data2 = Mock()
+    mock_image_data2.data = [Mock(url='https://mockurl2.com/image2')]
 
-    else:
-        assert False  # Fail the test if client is not created
+    # Set up side effect to return different data for each call
+    mock_client.images.generate.side_effect = [mock_image_data1, mock_image_data2]
+
+    # Mock the responses for the image downloads
+    mock_response1 = Mock()
+    mock_response1.status_code = 200
+    mock_response1.content = img_byte_arr
+
+    mock_response2 = Mock()
+    mock_response2.status_code = 200
+    mock_response2.content = img_byte_arr
+
+    # Setup patches for requests.get
+    with patch('requests.get', side_effect=[mock_response1, mock_response2]):
+        # Example inputs
+        plot1 = 'Plot description for Show 1'
+        plot2 = 'Plot description for Show 2'
+
+        # Call the function
+        result = generate_show_ads(plot1, plot2, mock_client)
+
+        # Print result for debugging
+        print("Result URLs:", result)
+
+        # Assertions
+        assert isinstance(result, tuple), "Result should be a tuple"
+        assert len(result) == 2, "Result should contain two image URLs"
+        assert result[0] == 'https://mockurl1.com/image1', "First image URL does not match expected output"
+        assert result[1] == 'https://mockurl2.com/image2', "Second image URL does not match expected output"
+
 
    

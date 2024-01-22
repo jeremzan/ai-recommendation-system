@@ -316,6 +316,14 @@ def generate_show_ads(plot1, plot2, client):
     return image_url1, image_url2
 
 
+def create_openai_client():
+    try:
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    except Exception as e:
+        print(f"Error creating OpenAI client: {e}")
+        exit()
+    return client
+
 if __name__ == "__main__":
 
     while True:
@@ -337,11 +345,7 @@ if __name__ == "__main__":
                 print("Please enter at least 2 different TV shows.\n")   
 
 
-    try:
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    except Exception as e:
-        print(f"Error creating OpenAI client: {e}")
-        exit()
+    client = create_openai_client()
 
     if not os.path.exists('./embeddings.pkl'):
         generate_embeddings(known_tv_shows, client)
@@ -365,18 +369,18 @@ if __name__ == "__main__":
     plot2 = extract_plot(content2)
     
     # Final message
-    final_message = (
-        f"I have also created just for you two shows which I think you would love. "
-        f"Show #1 is based on the fact that you loved the input shows that you gave me. "
-        f"Its name is {show1name} and it is a {concept1}\n"
-        f"Show #2 is based on the shows that I recommended for you. "
-        f"Its name is {show2name} and it is a {concept2} "
-        f"Here are also the 2 tv show ads. Hope you like them!"
-    )
+    final_message = f"""
+I have also created just for you two shows which I think you would love.
+Show #1 is based on the fact that you loved the input shows that you gave me. Its name is {show1name} and it is a {concept1}
+Show #2 is based on the shows that I recommended for you. Its name is {show2name} and it is a {concept2}
+Here are also the 2 TV show ads. Hope you like them!
+"""
     print(final_message)
 
     images = generate_show_ads(plot1, plot2, client)
 
     print(f"""To open the images in the browser click here :
-          Show #1 : {images[0]}
-          Show #2 : {images[1]}""")
+          
+Show #1 : {images[0]}
+
+Show #2 : {images[1]}""")
