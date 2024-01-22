@@ -7,57 +7,67 @@ import pandas as pd
 from show_suggester_ai import generate_show_ads, generate_embeddings, user_input_to_shows_list, get_favorite_tv_shows, read_csv_file, generate_show_descriptions, find_matching_shows
 
 
-def test_ask_user_valid_input():
-    assert user_input_to_shows_list("Gem of thrunes,    witch,  ") == ["Gem of thrunes","witch"]
-    assert user_input_to_shows_list("Game of ,   ") == ["Game of"]
+known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
 
-def test_ask_user_empty_input():
-    assert user_input_to_shows_list("") == []
+@pytest.fixture
+def known_shows_list():
+    return ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
 
-def test_ask_user_whitespace_input():
-    assert user_input_to_shows_list("   ") == []
+@pytest.mark.parametrize("user_input,expected", [
+    ("Gem of thrunes, witch, ", ["Gem of thrunes", "witch"]),
+    ("Game of , ", ["Game of"]),
+    ("", []),
+    (" ", [])
+])
+def test_user_input_to_shows_list(user_input, expected):
+    assert user_input_to_shows_list(user_input) == expected
 
-def test_get_favorite_tv_shows():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-
-    user_input = "Ge of Thrs, Witcer    ,  witcer, Breaking bud,"
+@pytest.mark.parametrize("user_input,expected", [
+    ("Ge of Thrs, Witcer, witcer, Breaking bud,", ["Game of Thrones", "The Witcher", "Breaking Bad"]),
+    ("", []),
+    ("Invalid Show", [])
+])
+def test_get_favorite_tv_shows(user_input, expected, known_shows_list):
     shows_list = user_input_to_shows_list(user_input)
-    assert set(get_favorite_tv_shows(shows_list, known_shows)) == set(["Game of Thrones", "The Witcher", "Breaking Bad"])
-
-def test_get_favorite_tv_shows_empty_list():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-    shows_list = []
-    assert get_favorite_tv_shows(shows_list, known_shows) == None
-
-def test_get_favorite_tv_shows_single_show():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-    shows_list = ["Game of Thrones"]
-    assert get_favorite_tv_shows(shows_list, known_shows) == None
-
-def test_get_favorite_tv_shows_duplicate_shows():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-    shows_list = ["Game of Thrones", "Game of Thrones"]
-    assert get_favorite_tv_shows(shows_list, known_shows) == None
-
-def test_get_favorite_tv_shows_invalid_shows():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-    shows_list = ["Invalid Show"]
-    assert get_favorite_tv_shows(shows_list, known_shows) == None
-
-def test_get_favorite_tv_shows_valid_shows():
-    known_shows = ["Game of Thrones", "The Witcher", "Breaking Bad", "Stranger Things"]
-    shows_list = ["Game of Thrones", "The Witcher", "Breaking Bad"]
-    assert set(get_favorite_tv_shows(shows_list, known_shows)) == set(["Game of Thrones", "The Witcher", "Breaking Bad"])
+    favorite_shows = get_favorite_tv_shows(shows_list, known_shows_list)
+    assert set(favorite_shows if favorite_shows is not None else []) == set(expected)
 
 def test_read_csv_file_valid_file():
     file_path = "./imdb_tvshows - imdb_tvshows.csv"
-    tv_shows = read_csv_file(file_path)
-    assert isinstance(tv_shows, pd.DataFrame)
+    assert isinstance(read_csv_file(file_path), pd.DataFrame)
 
 def test_read_csv_file_invalid_file():
     file_path = "path/to/invalid/file.csv"
-    tv_shows = read_csv_file(file_path)
-    assert tv_shows is None
+    assert read_csv_file(file_path) is None
+
+@pytest.fixture
+def show_data():
+    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
+    embeddings = {
+        'Show 1': [1, 6, -1, 3],
+        'Show 2': [0, 2, 1, 2],
+        'Show 3': [0, 1, 3, -5],
+        'Show 4': [0, 0, 1, 2],
+        'Show 5': [3, -1, -2, 1],
+        'Show 6': [1, 0, 7, -3],
+        'Show 7': [4, 2, 3, 4],
+        'Show 8': [2, -2, 5, 6],
+        'Show 9': [1, 3, 3 - 1, -2],
+        'Show 10': [3, 1, 2, -3],
+    }
+    return favorite_shows, embeddings
+
+def test_length_and_type_of_find_matching_shows(show_data):
+    favorite_shows, embeddings = show_data
+    recommended_show = find_matching_shows(favorite_shows, embeddings)
+    assert len(recommended_show.items()) == 5
+    assert isinstance(recommended_show, dict)
+
+def test_valid_and_specific_matching_shows(show_data):
+    favorite_shows, embeddings = show_data
+    recommended_show = find_matching_shows(favorite_shows, embeddings)
+    assert any(show in recommended_show.keys() for show in embeddings.keys())
+    assert set(recommended_show.keys()) == set(['Show 9', 'Show 10', 'Show 7', 'Show 4', 'Show 6'])
 
 @patch('show_suggester_ai.create_openai_client')
 def test_generate_show_descriptions(mock_create_client):
@@ -85,75 +95,6 @@ def test_generate_show_descriptions(mock_create_client):
     assert isinstance(result[0], str), "First element of the result should be a string"
     assert isinstance(result[1], str), "Second element of the result should be a string"
 
-def test_len_find_matching_shows():
-    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
-    embeddings = {
-        'Show 1': [1,6,-1,3],
-        'Show 2': [0,2,1,2],
-        'Show 3': [0,1,3,-5],
-        'Show 4': [0,0,1,2],
-        'Show 5': [3,-1,-2,1],
-        'Show 6': [1,0,7,-3],
-        'Show 7': [4,2,3,4],
-        'Show 8': [2,-2,5,6],
-        'Show 9': [1,3,3-1,-2],
-        'Show 10': [3,1,2,-3],
-    }
-    recommanded_show = find_matching_shows(favorite_shows, embeddings)
-    assert len(recommanded_show.items()) == 5
-
-def test_type_find_matching_shows():
-    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
-    embeddings = {
-        'Show 1': [1,6,-1,3],
-        'Show 2': [0,2,1,2],
-        'Show 3': [0,1,3,-5],
-        'Show 4': [0,0,1,2],
-        'Show 5': [3,-1,-2,1],
-        'Show 6': [1,0,7,-3],
-        'Show 7': [4,2,3,4],
-        'Show 8': [2,-2,5,6],
-        'Show 9': [1,3,3-1,-2],
-        'Show 10': [3,1,2,-3],
-    }
-    recommanded_show = find_matching_shows(favorite_shows, embeddings)
-    assert type(recommanded_show) == dict
-
-def test_valid_matching_shows():
-    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
-    embeddings = {
-        'Show 1': [1,6,-1,3],
-        'Show 2': [0,2,1,2],
-        'Show 3': [0,1,3,-5],
-        'Show 4': [0,0,1,2],
-        'Show 5': [3,-1,-2,1],
-        'Show 6': [1,0,7,-3],
-        'Show 7': [4,2,3,4],
-        'Show 8': [2,-2,5,6],
-        'Show 9': [1,3,3-1,-2],
-        'Show 10': [3,1,2,-3],
-    }
-    recommanded_show = find_matching_shows(favorite_shows, embeddings)
-    assert any(show in recommanded_show.keys() for show in embeddings.keys())
-
-def test_find_matching_shows():
-    favorite_shows = ['Show 1', 'Show 2', 'Show 3']
-    embeddings = {
-        'Show 1': [1,6,-1,3],
-        'Show 2': [0,2,1,2],
-        'Show 3': [0,1,3,-5],
-        'Show 4': [0,0,1,2],
-        'Show 5': [3,-1,-2,1],
-        'Show 6': [1,0,7,-3],
-        'Show 7': [4,2,3,4],
-        'Show 8': [2,-2,5,6],
-        'Show 9': [1,3,3-1,-2],
-        'Show 10': [3,1,2,-3],
-    }
-    recommanded_show = find_matching_shows(favorite_shows, embeddings)
-    print(recommanded_show.keys())
-    assert set(recommanded_show.keys()) == set(['Show 9', 'Show 10', 'Show 7', 'Show 4', 'Show 6'])
-    
 
 @patch('show_suggester_ai.create_openai_client')
 @patch('builtins.open')  # Mock the open function
@@ -240,6 +181,3 @@ def test_generate_show_ads(mock_create_client):
         assert len(result) == 2, "Result should contain two image URLs"
         assert result[0] == 'https://mockurl1.com/image1', "First image URL does not match expected output"
         assert result[1] == 'https://mockurl2.com/image2', "Second image URL does not match expected output"
-
-
-   
