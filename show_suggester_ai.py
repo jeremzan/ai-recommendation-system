@@ -154,13 +154,7 @@ def find_matching_shows(favorite_shows, embeddings):
     min_distance = min(distances_dict.values())
     max_distance = max(distances_dict.values())
 
-    # Linearly scale distances to a range of 10% to 100%
-    #scaled_distances = {
-    #    show: int(10 + 90 * (distance - min_distance) / (max_distance - min_distance))
-    #    for show, distance in distances_dict.items()
-    #}
-
-    # # Linearly scale distances to a range of 10% to 98%
+    # Linearly scale distances to a range of 10% to 98%
     scaled_distances = {
          show: int(10 + 88 * (distance - min_distance) / (max_distance - min_distance))
          for show, distance in distances_dict.items()
