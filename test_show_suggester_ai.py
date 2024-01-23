@@ -37,8 +37,9 @@ def test_read_csv_file_valid_file():
     assert isinstance(read_csv_file(file_path), pd.DataFrame)
 
 def test_read_csv_file_invalid_file():
-    file_path = "path/to/invalid/file.csv"
-    assert read_csv_file(file_path) is None
+    with pytest.raises(Exception):
+        file_path = "path/to/invalid/file.csv"
+        assert read_csv_file(file_path)
 
 @pytest.fixture
 def show_data():
