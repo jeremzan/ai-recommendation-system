@@ -1,3 +1,4 @@
+import logging
 from fuzzywuzzy import process
 from openai import OpenAI
 import pandas as pd
@@ -10,9 +11,13 @@ from io import BytesIO
 import math
 import requests
 from colorama import Fore, init
-
-
 init(autoreset=True)
+
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+for logger_name, logger_obj in logging.Logger.manager.loggerDict.items():
+    if hasattr(logger_obj, 'setLevel'):
+        logger_obj.setLevel(logging.WARNING)
 
 
 load_dotenv()
@@ -67,7 +72,7 @@ def read_csv_file(file_path):
         tv_shows = pd.read_csv(file_path)
         return tv_shows
     except Exception as e:
-        print(f"Error reading CSV file: {e}")
+        logging.error(Fore.RED + f"Error reading CSV file: {e}")
 
 def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
     """
@@ -84,7 +89,6 @@ def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
     embeddings_dict = {}
     titles = tv_shows['Title'].tolist()
     descriptions = tv_shows['Description'].tolist()
-    counter = 0
     for index, description in enumerate(descriptions):
         response = client.embeddings.create(
             input=description,
@@ -92,8 +96,7 @@ def generate_embeddings(tv_shows, client, model="text-embedding-ada-002"):
         )
         embedding = response.data[0].embedding
         embeddings_dict[titles[index]] = embedding
-        print(counter)
-        counter +=1
+
 
     with open('embeddings.pkl', 'wb') as file:  # Open file in binary write mode
         pickle.dump(embeddings_dict, file)
@@ -330,7 +333,7 @@ def create_openai_client():
     try:
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     except Exception as e:
-        print(f"Error creating OpenAI client: {e}")
+        logging.error(f"Error creating OpenAI client: {e}")
         exit()
     return client
 
@@ -344,16 +347,15 @@ if __name__ == "__main__":
         favorite_shows = get_favorite_tv_shows(shows_list, known_tv_shows['Title'])
 
         if favorite_shows:
-            print(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
+            logging.info(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
             confirmation = input()
             if confirmation.lower() == 'y':
-                print(Fore.GREEN + "Great! Generating recommendations...")
+                logging.info(Fore.GREEN + "Great! Generating recommendations...")
                 break
             else:
-                print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
+                logging.info("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
         else:
-                print(Fore.RED + "Please enter at least 2 different TV shows.\n")   
-
+            logging.warning(Fore.RED + "Please enter at least 2 different TV shows.\n")   
 
     client = create_openai_client()
 
@@ -367,7 +369,7 @@ if __name__ == "__main__":
 
     #Print recommanded shows and percentage
     for show, percentage in recommended_shows.items():
-        print(Fore.YELLOW + f'{show} ({percentage}%)')
+        logging.info(Fore.YELLOW + f'{show} ({percentage}%)')
 
     content1, content2 = generate_show_descriptions(favorite_shows, recommended_shows, client)
 
@@ -385,12 +387,11 @@ Show #1 is based on the fact that you loved the input shows that you gave me. It
 Show #2 is based on the shows that I recommended for you. Its name is {show2name} and it is a {concept2}
 Here are also the 2 TV show ads. Hope you like them!
 """
-    print(Fore.CYAN + final_message)
+    logging.info(Fore.CYAN + final_message)
 
     images = generate_show_ads(plot1, plot2, client)
 
-    print(f"""To open the images in the browser click here :
-          
+    logging.info(f"""To open the images in the browser click here :          
 Show #1 : {images[0]}
 
 Show #2 : {images[1]}""")
