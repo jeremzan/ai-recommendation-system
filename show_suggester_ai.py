@@ -14,7 +14,7 @@ from colorama import Fore, init
 init(autoreset=True)
 
 
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(message)s')
 for logger_name, logger_obj in logging.Logger.manager.loggerDict.items():
     if hasattr(logger_obj, 'setLevel'):
         logger_obj.setLevel(logging.WARNING)
@@ -347,15 +347,15 @@ if __name__ == "__main__":
         favorite_shows = get_favorite_tv_shows(shows_list, known_tv_shows['Title'])
 
         if favorite_shows:
-            logging.info(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
+            print(f"Just to make sure, do you mean {', '.join(favorite_shows)}? (y/n) ")
             confirmation = input()
             if confirmation.lower() == 'y':
-                logging.info(Fore.GREEN + "Great! Generating recommendations...")
+                print(Fore.GREEN + "Great! Generating recommendations...")
                 break
             else:
-                logging.info("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
+                print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
         else:
-            logging.warning(Fore.RED + "Please enter at least 2 different TV shows.\n")   
+            print(Fore.RED + "Please enter at least 2 different TV shows.\n")   
 
     client = create_openai_client()
 
@@ -369,7 +369,7 @@ if __name__ == "__main__":
 
     #Print recommanded shows and percentage
     for show, percentage in recommended_shows.items():
-        logging.info(Fore.YELLOW + f'{show} ({percentage}%)')
+        print(Fore.YELLOW + f'{show} ({percentage}%)')
 
     content1, content2 = generate_show_descriptions(favorite_shows, recommended_shows, client)
 
@@ -387,11 +387,11 @@ Show #1 is based on the fact that you loved the input shows that you gave me. It
 Show #2 is based on the shows that I recommended for you. Its name is {show2name} and it is a {concept2}
 Here are also the 2 TV show ads. Hope you like them!
 """
-    logging.info(Fore.CYAN + final_message)
+    print(Fore.CYAN + final_message)
 
     images = generate_show_ads(plot1, plot2, client)
 
-    logging.info(f"""To open the images in the browser click here :          
+    print(f"""To open the images in the browser click here :          
 Show #1 : {images[0]}
 
 Show #2 : {images[1]}""")
